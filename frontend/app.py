@@ -8,7 +8,6 @@ import json
 from datetime import datetime
 import pandas as pd
 import uuid
-from pathlib import Path
 
 # ==================== PAGE CONFIG ====================
 st.set_page_config(
@@ -18,137 +17,206 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# ==================== CUSTOM CSS ====================
 st.markdown("""
 <style>
     * {
         margin: 0;
         padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        background-color: #f5f7fa;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0;
+    }
+    
+    .stTabs [data-baseweb="tab-panel"] {
+        padding-top: 2rem;
     }
     
     .header-banner {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
-        border-radius: 10px;
+        padding: 2.5rem;
+        border-radius: 12px;
         color: white;
         margin-bottom: 2rem;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    
+    .header-banner h1 {
+        margin: 0;
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+    
+    .header-banner p {
+        margin: 0.75rem 0 0 0;
+        opacity: 0.95;
+        font-size: 1.05rem;
+        font-weight: 500;
     }
     
     .doc-item {
         background: white;
         border: 2px solid #e0e0e0;
         padding: 1rem;
-        margin: 0.5rem 0;
+        margin: 0.75rem 0;
         border-radius: 8px;
         cursor: pointer;
-        transition: all 0.3s;
+        transition: all 0.3s ease;
     }
     
     .doc-item:hover {
         border-color: #667eea;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        transform: translateY(-2px);
     }
     
     .doc-item.selected {
         background: #f0f4ff;
         border-color: #667eea;
-        border-left: 4px solid #667eea;
+        border-left: 5px solid #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
     }
     
-    .field-box {
+    .field-display {
         background: #f8f9fa;
         padding: 1.5rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        border-left: 4px solid #667eea;
+        border-radius: 10px;
+        margin: 0.75rem 0;
+        border-left: 5px solid #667eea;
+        transition: all 0.2s;
+    }
+    
+    .field-display:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.08);
     }
     
     .field-label {
         color: #666;
-        font-size: 0.9rem;
-        font-weight: 600;
+        font-size: 0.8rem;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
+        margin-bottom: 0.6rem;
+        display: block;
     }
     
     .field-value {
         color: #222;
-        font-size: 1.3rem;
+        font-size: 1.25rem;
         font-weight: 700;
-        margin-top: 0.5rem;
+        word-break: break-word;
+        line-height: 1.5;
+        margin: 0;
     }
     
     .status-badge {
         display: inline-block;
-        padding: 0.5rem 1rem;
+        padding: 0.45rem 1.2rem;
         border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-top: 0.5rem;
+        letter-spacing: 0.3px;
     }
     
     .status-uploaded {
         background: #e3f2fd;
-        color: #1976d2;
+        color: #1565c0;
     }
     
     .status-classified {
         background: #f3e5f5;
-        color: #7b1fa2;
+        color: #6a1b9a;
     }
     
     .status-processed {
         background: #e8f5e9;
-        color: #388e3c;
+        color: #2e7d32;
     }
     
     .status-queried {
         background: #fff3e0;
-        color: #f57c00;
+        color: #e65100;
     }
     
-    .doc-type-icon {
-        font-size: 2rem;
-        margin-right: 0.5rem;
+    .info-banner, .success-banner, .warning-banner, .error-banner {
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1.5rem 0;
+        border-left: 5px solid;
+        line-height: 1.7;
+        font-size: 1rem;
     }
     
     .info-banner {
         background: #e3f2fd;
-        border-left: 4px solid #2196f3;
-        padding: 1rem;
-        border-radius: 4px;
-        margin: 1rem 0;
+        border-color: #2196f3;
+        color: #1565c0;
     }
     
     .success-banner {
         background: #e8f5e9;
-        border-left: 4px solid #4caf50;
-        padding: 1rem;
-        border-radius: 4px;
-        margin: 1rem 0;
+        border-color: #4caf50;
+        color: #2e7d32;
     }
     
     .warning-banner {
         background: #fff3e0;
-        border-left: 4px solid #ff9800;
-        padding: 1rem;
-        border-radius: 4px;
-        margin: 1rem 0;
+        border-color: #ff9800;
+        color: #e65100;
     }
     
     .error-banner {
         background: #ffebee;
-        border-left: 4px solid #f44336;
-        padding: 1rem;
-        border-radius: 4px;
-        margin: 1rem 0;
+        border-color: #f44336;
+        color: #c62828;
     }
     
-    .extraction-field {
-        background: white;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border-radius: 8px;
-        border: 1px solid #e0e0e0;
+    .confidence-box {
+        padding: 2rem;
+        border-radius: 10px;
+        text-align: center;
+        margin: 1.5rem 0;
+    }
+    
+    .confidence-excellent {
+        background: #e8f5e9;
+        border-left: 5px solid #4caf50;
+    }
+    
+    .confidence-good {
+        background: #fff3e0;
+        border-left: 5px solid #ff9800;
+    }
+    
+    .confidence-low {
+        background: #ffebee;
+        border-left: 5px solid #f44336;
+    }
+    
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #555;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -159,72 +227,31 @@ DOCUMENT_TYPES = {
         'icon': '📋',
         'color': '#4caf50',
         'fields': ['Claim Number', 'Policy Number', 'Claim Amount', 'Date', 'Insured Name', 'Status'],
-        'patterns': {
-            'Claim Number': 'claim.*number|clm.*no|claim.*id',
-            'Policy Number': 'policy.*number|policy.*no|pol.*no',
-            'Claim Amount': 'claim.*amount|amount.*claimed|total.*claim',
-            'Date': 'date|filed|submitted',
-            'Insured Name': 'insured|claimant|policy.*holder',
-            'Status': 'status|approval|decision'
-        }
     },
     'Invoice': {
         'icon': '💰',
         'color': '#ff9800',
         'fields': ['Invoice Number', 'Amount Due', 'Date', 'Vendor Name', 'Description', 'Payment Terms'],
-        'patterns': {
-            'Invoice Number': 'invoice.*number|invoice.*id|inv.*no',
-            'Amount Due': 'amount.*due|total.*amount|subtotal|amount.*payable',
-            'Date': 'invoice.*date|date|issued',
-            'Vendor Name': 'vendor|supplier|from|bill.*from',
-            'Description': 'description|service|item|details',
-            'Payment Terms': 'payment.*terms|due.*date|net|payment'
-        }
     },
     'Inspection Report': {
         'icon': '🔍',
         'color': '#2196f3',
         'fields': ['Report Number', 'Inspection Date', 'Property', 'Damage Assessment', 'Recommendations', 'Inspector'],
-        'patterns': {
-            'Report Number': 'report.*number|report.*id|reference',
-            'Inspection Date': 'inspection.*date|date.*inspected|date',
-            'Property': 'property|location|address',
-            'Damage Assessment': 'damage|condition|assessment|findings',
-            'Recommendations': 'recommendations|suggested|action|repair',
-            'Inspector': 'inspector|surveyor|examined.*by'
-        }
     },
     'Policy Document': {
         'icon': '📄',
         'color': '#9c27b0',
         'fields': ['Policy Number', 'Coverage', 'Premium', 'Effective Date', 'Expiry Date', 'Terms'],
-        'patterns': {
-            'Policy Number': 'policy.*number|policy.*no|pol.*no',
-            'Coverage': 'coverage|covers|coverage.*limits',
-            'Premium': 'premium|annual.*premium|payment',
-            'Effective Date': 'effective.*date|starts|from.*date',
-            'Expiry Date': 'expiry.*date|expires|end.*date',
-            'Terms': 'terms|conditions|exclusions'
-        }
     },
     'Cover Letter': {
         'icon': '📮',
         'color': '#f44336',
         'fields': ['Date', 'Recipient', 'Subject', 'Attached Documents', 'Contact', 'Signature'],
-        'patterns': {
-            'Date': 'date',
-            'Recipient': 'to|dear|addressed',
-            'Subject': 'subject|re:',
-            'Attached Documents': 'attached|enclosed|submission',
-            'Contact': 'contact|phone|email',
-            'Signature': 'signature|signed|regards'
-        }
     }
 }
 
-# ==================== SESSION STATE MANAGER ====================
+# ==================== SESSION STATE ====================
 def initialize_session():
-    """Initialize all session state variables"""
     if 'documents' not in st.session_state:
         st.session_state.documents = []
     if 'selected_doc_id' not in st.session_state:
@@ -238,11 +265,8 @@ initialize_session()
 
 # ==================== DOCUMENT MANAGER ====================
 class DocumentManager:
-    """Advanced document management system"""
-    
     @staticmethod
     def add_document(filename, file_path, file_size):
-        """Add document with unique tracking"""
         doc_id = str(uuid.uuid4())[:12]
         document = {
             'doc_id': doc_id,
@@ -313,7 +337,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ==================== SIDEBAR ====================
+# ==================== SIDEBAR - DOCUMENT LIBRARY ====================
 with st.sidebar:
     st.title("📚 Document Manager")
     
@@ -369,7 +393,6 @@ with st.sidebar:
         for doc in documents:
             is_selected = doc['doc_id'] == st.session_state.selected_doc_id
             
-            # Document item
             status_class = f"status-{doc['status'].lower()}"
             doc_type_icon = '❓'
             
@@ -402,14 +425,14 @@ with st.sidebar:
     else:
         st.info("No documents yet")
 
-# ==================== MAIN CONTENT ====================
+# ==================== CHECK DOCUMENT SELECTED ====================
 if not st.session_state.selected_doc_id:
     st.info("👈 Select or upload a document from the sidebar to begin")
     st.stop()
 
 selected_doc = DocumentManager.get_document(st.session_state.selected_doc_id)
 
-# Document header
+# ==================== DOCUMENT HEADER ====================
 col1, col2, col3 = st.columns([2, 1, 1])
 
 with col1:
@@ -428,7 +451,7 @@ with col3:
 
 st.markdown("---")
 
-# Tabs
+# ==================== TABS ====================
 tab1, tab2, tab3, tab4 = st.tabs(["📋 Classify", "💾 Process", "❓ Query", "📊 Results"])
 
 # ==================== TAB 1: CLASSIFY ====================
@@ -438,7 +461,6 @@ with tab1:
     if selected_doc['classification']:
         result = selected_doc['classification']
         
-        # Classification summary
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -452,11 +474,10 @@ with tab1:
         
         st.markdown(f"""
         <div class="success-banner">
-        <strong>📝 Description:</strong> {result['description']}
+        <strong>📝 Description:</strong><br>{result['description']}
         </div>
         """, unsafe_allow_html=True)
         
-        # Probability distribution
         st.subheader("📈 Classification Scores")
         
         probs = result['probabilities']
@@ -567,22 +588,17 @@ with tab3:
     if not selected_doc['processed']:
         st.warning("⚠️ Please process this document first")
     else:
-        # Load indices
         try:
             if not st.session_state.analyzer.text_retriever.text_chunks:
                 st.session_state.analyzer.load_indices()
         except:
             pass
         
-        # Document type specific questions
         if selected_doc['classification']:
             doc_type = selected_doc['classification']['document_type']
-            doc_config = DOCUMENT_TYPES.get(doc_type, {})
             
             st.subheader("⚡ Suggested Questions")
             
-            # Create dynamic buttons based on document type
-            cols = st.columns(3)
             suggested_queries = {
                 'Claim Form': [
                     "What is the claim number?",
@@ -611,13 +627,13 @@ with tab3:
                 ]
             }
             
-            queries = suggested_queries.get(doc_type, ["Generic question 1", "Generic question 2", "Generic question 3"])
+            queries = suggested_queries.get(doc_type, ["Ask a question 1", "Ask a question 2", "Ask a question 3"])
             
+            cols = st.columns(3)
             for idx, query in enumerate(queries):
                 if cols[idx].button(query, use_container_width=True):
                     st.session_state.query = query
         
-        # Custom query
         st.subheader("✍️ Custom Query")
         query = st.text_input(
             "Ask a question about this document:",
@@ -630,7 +646,6 @@ with tab3:
                 try:
                     result = st.session_state.analyzer.query_document(query)
                     
-                    # Save query
                     selected_doc['queries'].append({
                         'query': query,
                         'result': result,
@@ -656,13 +671,11 @@ with tab4:
         result = st.session_state.last_result
         structured = result['structured_data']
         
-        # Display extracted fields
         doc_type = selected_doc['classification']['document_type'] if selected_doc['classification'] else 'Unknown'
         doc_config = DOCUMENT_TYPES.get(doc_type, {})
         
         st.subheader(f"🔍 Extracted Information from {doc_type}")
         
-        # Dynamic fields based on document type
         fields_to_display = doc_config.get('fields', [])
         field_mapping = {
             'Policy Number': 'Policy_Number',
@@ -680,17 +693,20 @@ with tab4:
             'Damage Assessment': 'Damage_Assessment',
             'Recommendations': 'Recommendations',
             'Inspector': 'Inspector',
+            'Report Number': 'Report_Number',
+            'Inspection Date': 'Inspection_Date',
             'Coverage': 'Coverage',
             'Premium': 'Premium',
             'Effective Date': 'Effective_Date',
             'Expiry Date': 'Expiry_Date',
             'Terms': 'Terms',
             'Recipient': 'Recipient',
+            'Subject': 'Subject',
+            'Attached Documents': 'Attached_Documents',
             'Contact': 'Contact',
             'Signature': 'Signature'
         }
         
-        # Display fields in columns
         cols = st.columns(2)
         
         for idx, field in enumerate(fields_to_display):
@@ -700,53 +716,100 @@ with tab4:
                 db_field = field_mapping.get(field, field.replace(' ', '_'))
                 value = structured.get(db_field, 'N/A')
                 
+                if value == 'N/A':
+                    value_display = "❌ Not Found"
+                    color = "#ff6b6b"
+                else:
+                    value_display = str(value)
+                    color = "#667eea"
+                
                 st.markdown(f"""
-                <div class="extraction-field">
-                <div class="field-label">{field}</div>
-                <div class="field-value">{value}</div>
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 0.75rem 0; border-left: 5px solid {color};">
+                <div style="color: #666; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.6rem;">{field}</div>
+                <div style="color: #222; font-size: 1.25rem; font-weight: 700; word-wrap: break-word; line-height: 1.5;">{value_display}</div>
                 </div>
                 """, unsafe_allow_html=True)
         
-        # Summary and Confidence
+        st.markdown("---")
+        
+        # Confidence
+        confidence = result['confidence_score']
+        confidence_pct = f"{confidence:.1%}"
+        
+        if confidence > 0.8:
+            confidence_color = "#4caf50"
+            confidence_status = "🟢 Excellent"
+            confidence_class = "confidence-excellent"
+        elif confidence > 0.6:
+            confidence_color = "#ff9800"
+            confidence_status = "🟡 Good"
+            confidence_class = "confidence-good"
+        else:
+            confidence_color = "#f44336"
+            confidence_status = "🔴 Low"
+            confidence_class = "confidence-low"
+        
+        st.markdown(f"""
+        <div class="confidence-box {confidence_class}">
+        <h3 style="color: {confidence_color}; margin: 0;">🎯 Confidence Score</h3>
+        <p style="font-size: 2rem; font-weight: 700; color: {confidence_color}; margin: 0.5rem 0;">{confidence_pct}</p>
+        <p style="color: {confidence_color}; margin: 0;">{confidence_status}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         st.markdown("---")
         st.subheader("📝 Analysis Summary")
         
-        col1, col2 = st.columns([3, 1])
+        summary_text = result['summary']
+        st.markdown(f"""
+        <div style="background: #e3f2fd; padding: 1.5rem; border-radius: 10px; border-left: 5px solid #2196f3; line-height: 1.7; font-size: 1rem; color: #1565c0;">
+        {summary_text}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.subheader("💾 Export Results")
+        
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.markdown(f"""
-            <div class="info-banner">
-            {result['summary']}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            confidence = result['confidence_score']
-            color = "🟢" if confidence > 0.8 else "🟡" if confidence > 0.6 else "🔴"
-            st.metric("Confidence", f"{confidence:.1%}", delta=f"{color}")
-        
-        # Export option
-        col1, col2 = st.columns(2)
-        
-        with col1:
+            json_data = json.dumps(result, indent=2, default=str)
             st.download_button(
                 label="📥 Download JSON",
-                data=json.dumps(result, indent=2, default=str),
-                file_name=f"result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                data=json_data,
+                file_name=f"extraction_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                 mime="application/json",
                 use_container_width=True
             )
         
         with col2:
-            if st.button("🔄 New Query", use_container_width=True):
+            export_df = pd.DataFrame([{
+                'Field': field,
+                'Value': structured.get(field_mapping.get(field, field), 'N/A')
+            } for field in fields_to_display])
+            
+            csv_data = export_df.to_csv(index=False)
+            st.download_button(
+                label="📊 Download CSV",
+                data=csv_data,
+                file_name=f"extraction_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col3:
+            if st.button("🔄 New Query", use_container_width=True, type="secondary"):
                 st.session_state.last_result = None
                 st.rerun()
+        
+        with st.expander("🔧 View Raw Data"):
+            st.json(result)
 
 # ==================== FOOTER ====================
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #999; padding: 2rem;'>
+<div style='text-align: center; color: #999; padding: 2rem; font-size: 0.9rem;'>
 <strong>Insurance Document AI v3.0</strong> | © 2025<br>
-Document-Type Aware Classification • Smart Extraction • Intelligent Analysis
+Document-Type Aware • Multi-Modal Analysis • Smart Extraction
 </div>
 """, unsafe_allow_html=True)
