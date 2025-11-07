@@ -594,6 +594,7 @@ with tab3:
         except:
             pass
         
+        # Document type specific questions
         if selected_doc['classification']:
             doc_type = selected_doc['classification']['document_type']
             
@@ -608,7 +609,7 @@ with tab3:
                 'Invoice': [
                     "What is the invoice number?",
                     "What is the total amount due?",
-                    "What is the payment due date?"
+                    "Who is the vendor?"
                 ],
                 'Inspection Report': [
                     "What damages were found?",
@@ -627,11 +628,11 @@ with tab3:
                 ]
             }
             
-            queries = suggested_queries.get(doc_type, ["Ask a question 1", "Ask a question 2", "Ask a question 3"])
+            queries = suggested_queries.get(doc_type, ["Ask a question 1", "Ask a question 2"])
             
             cols = st.columns(3)
             for idx, query in enumerate(queries):
-                if cols[idx].button(query, use_container_width=True):
+                if cols[idx % 3].button(query, use_container_width=True):
                     st.session_state.query = query
         
         st.subheader("✍️ Custom Query")
@@ -646,13 +647,17 @@ with tab3:
                 try:
                     result = st.session_state.analyzer.query_document(query)
                     
+                    # Store in session state
+                    st.session_state.last_result = result
+                    
+                    # Also store in selected_doc for history
                     selected_doc['queries'].append({
                         'query': query,
                         'result': result,
                         'timestamp': datetime.now()
                     })
                     
-                    st.session_state.last_result = result
+                    # Update status
                     selected_doc['status'] = 'Queried'
                     
                     st.success("✅ Query complete!")
@@ -661,51 +666,45 @@ with tab3:
                 except Exception as e:
                     st.error(f"❌ Error: {e}")
 
+
 # ==================== TAB 4: RESULTS ====================
 with tab4:
     st.header("📊 Extraction Results")
     
+    # Check if we have last_result in session
     if not st.session_state.last_result:
         st.info("Run a query first to see results")
     else:
         result = st.session_state.last_result
-        structured = result['structured_data']
+        structured = result.get('structured_data', {})
         
         doc_type = selected_doc['classification']['document_type'] if selected_doc['classification'] else 'Unknown'
         doc_config = DOCUMENT_TYPES.get(doc_type, {})
         
         st.subheader(f"🔍 Extracted Information from {doc_type}")
         
-        fields_to_display = doc_config.get('fields', [])
+        # Field mapping for display
         field_mapping = {
-            'Policy Number': 'Policy_Number',
-            'Claim Number': 'Claim_Number',
-            'Claim Amount': 'Claim_Amount',
-            'Date': 'Date',
-            'Status': 'Status',
-            'Insured Name': 'Insured_Name',
-            'Invoice Number': 'Invoice_Number',
-            'Amount Due': 'Amount_Due',
-            'Vendor Name': 'Vendor_Name',
-            'Description': 'Description',
-            'Payment Terms': 'Payment_Terms',
-            'Property': 'Property',
-            'Damage Assessment': 'Damage_Assessment',
-            'Recommendations': 'Recommendations',
-            'Inspector': 'Inspector',
-            'Report Number': 'Report_Number',
-            'Inspection Date': 'Inspection_Date',
-            'Coverage': 'Coverage',
-            'Premium': 'Premium',
-            'Effective Date': 'Effective_Date',
-            'Expiry Date': 'Expiry_Date',
-            'Terms': 'Terms',
-            'Recipient': 'Recipient',
-            'Subject': 'Subject',
-            'Attached Documents': 'Attached_Documents',
-            'Contact': 'Contact',
-            'Signature': 'Signature'
+            'invoice_number': 'Invoice_Number',
+            'amount_due': 'Amount_Due',
+            'vendor_name': 'Vendor_Name',
+            'description': 'Description',
+            'payment_terms': 'Payment_Terms',
+            'date': 'Date',
+            'policy_number': 'Policy_Number',
+            'claim_number': 'Claim_Number',
+            'claim_amount': 'Claim_Amount',
+            'status': 'Status',
         }
+        
+        # Get fields from critical_fields OR structured_data
+        critical_fields = result.get('critical_fields', {})
+        
+        # Combine both sources
+        all_extracted_data = {**structured, **critical_fields}
+        
+        # Display fields based on document type
+        fields_to_display = doc_config.get('fields', list(all_extracted_data.keys()))
         
         cols = st.columns(2)
         
@@ -713,60 +712,75 @@ with tab4:
             col = cols[idx % 2]
             
             with col:
-                db_field = field_mapping.get(field, field.replace(' ', '_'))
-                value = structured.get(db_field, 'N/A')
+                # Try to find the field in multiple places
+                display_field = field.replace(' ', '_')
                 
-                if value == 'N/A':
-                    value_display = "❌ Not Found"
-                    color = "#ff6b6b"
+                # Check in critical_fields first
+                if field.lower().replace(' ', '_') in critical_fields:
+                    value = critical_fields[field.lower().replace(' ', '_')]
+                    confidence = result.get('confidence_scores', {}).get(field.lower().replace(' ', '_'), 0.8)
+                elif display_field in all_extracted_data:
+                    value = all_extracted_data[display_field]
+                    confidence = 0.8
+                elif field in all_extracted_data:
+                    value = all_extracted_data[field]
+                    confidence = 0.8
                 else:
+                    value = "N/A"
+                    confidence = 0.0
+                
+                # Format value
+                if value and value != 'N/A':
                     value_display = str(value)
                     color = "#667eea"
+                    icon = "-"
+                else:
+                    value_display = "Not Found"
+                    color = "#ff6b6b"
+                    icon = "-"
                 
                 st.markdown(f"""
                 <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 0.75rem 0; border-left: 5px solid {color};">
                 <div style="color: #666; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.6rem;">{field}</div>
-                <div style="color: #222; font-size: 1.25rem; font-weight: 700; word-wrap: break-word; line-height: 1.5;">{value_display}</div>
+                <div style="color: #222; font-size: 1.25rem; font-weight: 700; word-wrap: break-word; line-height: 1.5;">{icon} {value_display}</div>
+                <div style="color: #999; font-size: 0.75rem; margin-top: 0.5rem;">Confidence: {confidence:.0%}</div>
                 </div>
                 """, unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # Confidence
-        confidence = result['confidence_score']
+        # Confidence score
+        confidence = result.get('confidence_score', 0.5)
         confidence_pct = f"{confidence:.1%}"
         
         if confidence > 0.8:
             confidence_color = "#4caf50"
             confidence_status = "🟢 Excellent"
-            confidence_class = "confidence-excellent"
         elif confidence > 0.6:
             confidence_color = "#ff9800"
             confidence_status = "🟡 Good"
-            confidence_class = "confidence-good"
         else:
             confidence_color = "#f44336"
             confidence_status = "🔴 Low"
-            confidence_class = "confidence-low"
         
         st.markdown(f"""
-        <div class="confidence-box {confidence_class}">
-        <h3 style="color: {confidence_color}; margin: 0;">🎯 Confidence Score</h3>
-        <p style="font-size: 2rem; font-weight: 700; color: {confidence_color}; margin: 0.5rem 0;">{confidence_pct}</p>
-        <p style="color: {confidence_color}; margin: 0;">{confidence_status}</p>
+        <div style="background: {confidence_color}15; padding: 1rem; border-radius: 8px; border-left: 4px solid {confidence_color}; margin: 1rem 0;">
+        <strong style="color: {confidence_color};">🎯 Confidence Score: {confidence_pct} {confidence_status}</strong>
         </div>
         """, unsafe_allow_html=True)
         
+        # Summary
         st.markdown("---")
         st.subheader("📝 Analysis Summary")
         
-        summary_text = result['summary']
+        summary_text = result.get('summary', 'No summary available')
         st.markdown(f"""
-        <div style="background: #e3f2fd; padding: 1.5rem; border-radius: 10px; border-left: 5px solid #2196f3; line-height: 1.7; font-size: 1rem; color: #1565c0;">
+        <div style="background: #e3f2fd; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #2196f3; line-height: 1.7; font-size: 1rem; color: #1565c0;">
         {summary_text}
         </div>
         """, unsafe_allow_html=True)
         
+        # Export options
         st.markdown("---")
         st.subheader("💾 Export Results")
         
@@ -783,11 +797,19 @@ with tab4:
             )
         
         with col2:
-            export_df = pd.DataFrame([{
-                'Field': field,
-                'Value': structured.get(field_mapping.get(field, field), 'N/A')
-            } for field in fields_to_display])
+            # Create export dataframe
+            export_data = []
+            for field in fields_to_display:
+                if field.lower().replace(' ', '_') in critical_fields:
+                    value = critical_fields[field.lower().replace(' ', '_')]
+                elif field in all_extracted_data:
+                    value = all_extracted_data[field]
+                else:
+                    value = 'N/A'
+                
+                export_data.append({'Field': field, 'Value': value})
             
+            export_df = pd.DataFrame(export_data)
             csv_data = export_df.to_csv(index=False)
             st.download_button(
                 label="📊 Download CSV",
@@ -802,8 +824,10 @@ with tab4:
                 st.session_state.last_result = None
                 st.rerun()
         
-        with st.expander("🔧 View Raw Data"):
+        # Show raw result data
+        with st.expander("🔧 View Raw Data (Debug)"):
             st.json(result)
+
 
 # ==================== FOOTER ====================
 st.markdown("---")

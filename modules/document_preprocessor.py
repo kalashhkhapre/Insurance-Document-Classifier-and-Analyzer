@@ -29,7 +29,7 @@ class DocumentPreprocessor:
         ensure_dir(self.config['paths']['extracted_text'])
         ensure_dir(self.config['paths']['images'])
     
-    def process_pdf(self, pdf_path: str, dpi: int = 150) -> DocumentMetadata:
+    def process_pdf(self, pdf_path: str, dpi: int = 200) -> DocumentMetadata:
         """
         Process PDF with optimized DPI for faster processing.
         

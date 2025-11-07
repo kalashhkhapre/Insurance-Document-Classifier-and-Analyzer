@@ -154,7 +154,35 @@ class InsuranceDocumentAnalyzer:
         result_path = self.summarizer_agent.save_result(final_result)
         print(f"\n✓ Results saved to: {result_path}")
         
+        # Ensure the result has all necessary keys for Streamlit UI
+        if not isinstance(final_result, dict):
+            final_result = {}
+        
+        # Add missing keys if needed
+        if 'structured_data' not in final_result:
+            final_result['structured_data'] = critical_output.get('critical_fields', {})
+        
+        if 'critical_fields' not in final_result:
+            final_result['critical_fields'] = critical_output.get('critical_fields', {})
+        
+        if 'confidence_scores' not in final_result:
+            final_result['confidence_scores'] = critical_output.get('confidence_scores', {})
+        
+        if 'confidence_score' not in final_result:
+            scores = critical_output.get('confidence_scores', {})
+            if scores:
+                final_result['confidence_score'] = sum(scores.values()) / len(scores)
+            else:
+                final_result['confidence_score'] = 0.0
+        
+        if 'summary' not in final_result:
+            final_result['summary'] = critical_output.get('extraction_summary', 'Analysis complete')
+        
+        if 'evidence_pages' not in final_result:
+            final_result['evidence_pages'] = critical_output.get('evidence_pages', [])
+        
         return final_result
+
     
     def print_classification(self, classification: dict):
         """Print classification results."""
